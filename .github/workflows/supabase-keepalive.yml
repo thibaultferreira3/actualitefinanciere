@@ -1,0 +1,31 @@
+# Garde le projet Supabase actif : l'offre gratuite met en pause un projet
+# qui ne recoit aucune requete pendant 7 jours. Cette tache envoie une
+# petite requete de lecture tous les 2 jours. Si elle echoue (projet deja
+# en pause, cle changee...), GitHub envoie un e-mail au proprietaire du depot.
+name: Supabase keep-alive
+
+on:
+  schedule:
+    - cron: "17 6 */2 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SB_URL: https://vxudamygjurarxswbaat.supabase.co
+      # cle publique, deja presente dans index.html
+      SB_KEY: sb_publishable_uLlgJpW15tYOt9kWtxprqw_FGZL2AWA
+    steps:
+      - name: Requete vers l'API et la base
+        run: |
+          set -e
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 --retry-delay 20 \
+            -H "apikey: $SB_KEY" "$SB_URL/auth/v1/settings")
+          echo "auth/v1/settings -> $code"
+          [ "$code" = "200" ]
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --retry 3 --retry-delay 20 \
+            -H "apikey: $SB_KEY" "$SB_URL/rest/v1/suivi?select=offer_id&limit=1")
+          echo "rest/v1/suivi -> $code"
+          [ "$code" = "200" ]
